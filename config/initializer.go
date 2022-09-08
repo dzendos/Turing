@@ -11,11 +11,7 @@ import (
 )
 
 // ########################## MOVE TO CONFIG ##########################
-<<<<<<< HEAD
 var TOKEN string = ""
-=======
-var TOKEN string = "5793229219:AAH4E2Nn9NmDg3nTTYQTOE31rP3g0R1I6PE"
->>>>>>> 960281ef16d1fbcf83d0bb64d64338666352b71a
 
 // InitializeBot tries to connect the bot with
 // our token.
