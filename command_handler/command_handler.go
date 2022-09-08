@@ -3,15 +3,17 @@
 package command_handler
 
 import (
+	lcl "github.com/dzendos/Turing/config/locales"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-// BotHandler provides an interface between bot and commands.
+// CmdStart implements action on '/start' command.// BotHandler provides an interface between bot and commands.
 type BotHandler struct {
-	*tb.Bot
+	Bot   *tb.Bot
+	Local *lcl.Localizer
 }
 
-// CmdStart implements action on '/start' command.
-func (bot *BotHandler) CmdStart(message *tb.Message) {
-
+func (handler *BotHandler) CmdStart(message *tb.Message) {
+	answer := handler.Local.Get(message.Sender.LanguageCode, "start")
+	handler.Bot.Send(message.Sender, answer)
 }
