@@ -14,7 +14,6 @@ type BotHandler struct {
 	Bot            *tb.Bot                 // Bot contains reference on a main Bot to be able to send messages throygh it.
 	Local          *lcl.Localizer          // Local contains dictionary with messages on different languages.
 	CurrentPlayers map[*tb.User]*gs.Player // Current players contains all the players that are playing or looking for a game. Key is an id of the player.
-	PendingInvites map[*tb.User][]string   // PendingInvites key - id of a player, array - all players that have invited hm in the game.
 }
 
 // CmdStart implements action on '/start' command.// BotHandler provides an interface between bot and commands.
@@ -77,7 +76,14 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 
 				doesUserExist = true
 
-				// SEND MESSAGES
+				// Sending messages to users about what happened
+				joinedKnavenswer := handler.Local.Get(message.Sender.LanguageCode, "YouJoined")
+				hostKnavenswer := handler.Local.Get(message.Sender.LanguageCode, "SomePlayerJoinedYou")
+				handler.Bot.Send(message.Sender, joinedKnavenswer)
+				handler.Bot.Send(message.Sender, hostKnavenswer)
+
+				// Changing game state
+				player.State.PlayerJoined(handler.Bot, handler.Local, &handler.CurrentPlayers)
 
 				break
 			}
@@ -95,11 +101,13 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 	isInLobby := handler.CurrentPlayers[message.Sender].Role == gs.Lobby
 
 	switch isInLobby {
-	case true:
+	case true: // It means that we are waiting for others to join
 		answer := handler.Local.Get(message.Sender.LanguageCode, "WaitingForOthers")
 		handler.Bot.Send(message.Sender, answer)
 
-	case false:
+	case false: // It means that we are playing and try to do some action.
+		player := handler.CurrentPlayers[message.Sender]
 
+		player.State.PerformAction(player, &message.Text, handler.Bot, handler.Local, &handler.CurrentPlayers)
 	}
 }
