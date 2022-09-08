@@ -42,6 +42,46 @@ func (handler *BotHandler) CmdNewGame(message *tb.Message) {
 	handler.CurrentPlayers[message.Sender] = player
 }
 
+// CmdGetMyId sends user his id in telegram
+// it can be used to connect to some person's game.
+func (handler *BotHandler) CmdGetMyId(message *tb.Message) {
+	handler.Bot.Send(message.Sender, message.Sender.ID)
+}
+
+// CmdExitLobby deletes player from lobby if the game have not started yet
+// and finishes the game if it has started.
+func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
+	player, isInGame := handler.CurrentPlayers[message.Sender]
+
+	if !isInGame {
+		answer := handler.Local.Get(message.Sender.LanguageCode, "NotInLobby")
+		handler.Bot.Send(message.Sender, answer)
+		return
+	}
+
+	player.State.NumberOfPlayers--
+
+	// Telling others that someone left the lobby.
+	for user, playerF := range handler.CurrentPlayers {
+		if playerF.State == player.State && playerF != player {
+			answer := player.User.Username + handler.Local.Get(user.LanguageCode, "LeftTheLobby")
+			handler.Bot.Send(user, answer)
+		}
+	}
+
+	if player.Role != gs.Lobby {
+		printStatistics(handler, player.State)
+
+		for user, playerF := range handler.CurrentPlayers {
+			if playerF.State == player.State && playerF != player {
+				delete(handler.CurrentPlayers, user)
+			}
+		}
+	}
+
+	delete(handler.CurrentPlayers, player.User)
+}
+
 // MessageHandler handles essages sent by the user
 // (for example during the game or while inviting people).
 func (handler *BotHandler) MessageHandler(message *tb.Message) {
@@ -109,5 +149,17 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 		player := handler.CurrentPlayers[message.Sender]
 
 		player.State.PerformAction(player, &message.Text, handler.Bot, handler.Local, &handler.CurrentPlayers)
+	}
+}
+
+// printStatistics sends all the information about the game
+// when the game is over.
+func printStatistics(handler *BotHandler, state *gs.GameState) {
+	for user, playerF := range handler.CurrentPlayers {
+		if playerF.State == state {
+			// Printing stat of a match.
+			result := handler.Local.Get(playerF.User.LanguageCode, "GameOver")
+			handler.Bot.Send(user, result)
+		}
 	}
 }

@@ -15,6 +15,12 @@ type Localizer struct {
 }
 
 func (l *Localizer) Get(local string, field string) string {
+	// In case if required localization does not exist
+	// we use English localization as a default one.
+	if local != "en" && local != "ru" {
+		local = "en"
+	}
+
 	return l.dict[local][field]
 }
 
