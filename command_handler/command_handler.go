@@ -117,10 +117,10 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 				doesUserExist = true
 
 				// Sending messages to users about what happened
-				joinedKnavenswer := handler.Local.Get(message.Sender.LanguageCode, "YouJoined")
-				hostKnavenswer := handler.Local.Get(message.Sender.LanguageCode, "SomePlayerJoinedYou")
-				handler.Bot.Send(message.Sender, joinedKnavenswer)
-				handler.Bot.Send(message.Sender, hostKnavenswer)
+				joinedPlayerAnswer := handler.Local.Get(message.Sender.LanguageCode, "YouJoined") + player.User.Username
+				hostKnavenswer := message.Sender.Username + handler.Local.Get(message.Sender.LanguageCode, "SomePlayerJoinedYou")
+				handler.Bot.Send(message.Sender, joinedPlayerAnswer)
+				handler.Bot.Send(player.User, hostKnavenswer)
 
 				// Changing game state
 				player.State.PlayerJoined(handler.Bot, handler.Local, &handler.CurrentPlayers)
@@ -130,7 +130,7 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 		}
 
 		if !doesUserExist {
-			answer := handler.Local.Get(message.Sender.LanguageCode, "UserDoNotExist")
+			answer := handler.Local.Get(message.Sender.LanguageCode, "UserDoesNotExist")
 			handler.Bot.Send(message.Sender, answer)
 			return
 		}
@@ -142,7 +142,8 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 
 	switch isInLobby {
 	case true: // It means that we are waiting for others to join
-		answer := handler.Local.Get(message.Sender.LanguageCode, "WaitingForOthers")
+		answer := handler.Local.Get(message.Sender.LanguageCode, "WaitingForOthers") +
+			strconv.Itoa(handler.CurrentPlayers[message.Sender].State.NumberOfPlayers)
 		handler.Bot.Send(message.Sender, answer)
 
 	case false: // It means that we are playing and try to do some action.
