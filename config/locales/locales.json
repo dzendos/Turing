@@ -1,11 +1,41 @@
 {
     "ru": 
     {
-        "start": "Привет! Я Бот Тьюринга! Скоро н всех смартфонах страны!"
+        "start": "Привет! Я Бот Тьюринга! Скоро н всех смартфонах страны!",
+        "NewGameError": "Невозможно присоединиться к игре, которая уже началась.",
+        "NewGameCreation": "Вы создали игру! Игроки могут присоединиться к Вам по Player Id.\n Чтобы узнать его используйте команду /get_my_id.",
+        "WaitingForOthers": "Ожидаем других игроков.\n Количестыо игроков в комнате: ",
+        "IncorrectGameId": "Введенный Вами Id некорректен. Проверьте его написание и попробуйте подключиться еще раз.",
+        "UserDoesNotExist": "Пользователь с указанным Вами Id не найден.Проверьте что это Id того игрока, к которому вы хотите подклюситься и попробуйте еще раз.",
+        "UserAlreadyInGame": "Данный пользователь уже играет.",
+        "YouJoined": "Вы присоединились к ",
+        "SomePlayerJoinedYou": " присоединился к вам",
+        "HostGreetingMessage": "Вы Ведущий\nВы играете с двумя людьми - ваша цель угадать их настоящие имена. Но будьте осторожны - хотя один из игроков будет стараться вам помогать разгадать их имена, другой будет пытаться вас запутать. Начнем же!\nВы играете с:\n",
+        "KnaveGreetingMessage": "Вы Лжец\nВаша цель запутать Ведущего, чтобы он сделал неправильный выбор\nЧеловек, которого вам необходимо имитировать:\n",
+        "KnightGreetingMessage": "Вы Рыцарь\nВаша цель помочь Ведущему сделать правильный выбор\nЗа Лжеца играет:\n",
+        "YourTurn": "Ваш ход!",
+        "NotInLobby": "Вы не в комнате.",
+        "LeftTheLobby": " покинул вашу комнату.",
+        "GameOver": "Конец игры\nСкоро здесь появится статистика матча."
     },
 
     "en":
     {
-        "start": "Hi, I am Turing Bot! Coming soon!"
+        "start": "Hi, I am Turing Bot! Coming soon!",
+        "NewGameError": "Impossible to join the game, that has already started.",
+        "NewGameCreation": "You have created a new game! Others can join you by typing your Player id.\n Type /get_my_id command to know it.",
+        "WaitingForOthers": "Waiting for others players.\n Players in lobby: ",
+        "IncorrectGameId": "The id you have entered is not correct. Check if it is correct and try once again.",
+        "UserDoesNotExist": "User with specified id was not found. Check if this is an id of a player you want to join and try again.",
+        "UserAlreadyInGame": "User with specified id is already playing.",
+        "YouJoined": "You joined to ",
+        "SomePlayerJoinedYou": " joined you",
+        "HostGreetingMessage": "You are Host\nYou are playing with two people - your goal is to guess the real names of each player. Be careful, the goal of one player is to help you with this understanding, however another one will try to confuse you. So let's start!\nYou play with:\n",
+        "KnaveGreetingMessage": "You are Knave\nYour goal is to confuse the Host, so he did the wrong choise\nPerson you need to immitate:\n",
+        "KnightGreetingMessage": "You are Knight\nYour goal is to help the Host to do the right choise\n Knave is:\n",
+        "YourTurn": "Your turn!",
+        "NotInLobby": "You are not in lobby!",
+        "LeftTheLobby": " has left your lobby.",
+        "GameOver": "Game Over\nSoon here will be some statistics."
     }
 }
