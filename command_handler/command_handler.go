@@ -3,6 +3,7 @@
 package command_handler
 
 import (
+	"log"
 	"strconv"
 
 	lcl "github.com/dzendos/Turing/config/locales"
@@ -11,9 +12,9 @@ import (
 )
 
 type BotHandler struct {
-	Bot            *tb.Bot                 // Bot contains reference on a main Bot to be able to send messages throygh it.
-	Local          *lcl.Localizer          // Local contains dictionary with messages on different languages.
-	CurrentPlayers map[*tb.User]*gs.Player // Current players contains all the players that are playing or looking for a game. Key is an id of the player.
+	Bot            *tb.Bot              // Bot contains reference on a main Bot to be able to send messages throygh it.
+	Local          *lcl.Localizer       // Local contains dictionary with messages on different languages.
+	CurrentPlayers map[int64]*gs.Player // Current players contains all the players that are playing or looking for a game. Key is an id of the player.
 }
 
 // CmdStart implements action on '/start' command.// BotHandler provides an interface between bot and commands.
@@ -26,7 +27,7 @@ func (handler *BotHandler) CmdStart(message *tb.Message) {
 // (if he is not in a game) and puts this Player in currentPlayers
 // as Lobby waiter.
 func (handler *BotHandler) CmdNewGame(message *tb.Message) {
-	_, isPlaying := handler.CurrentPlayers[message.Sender]
+	_, isPlaying := handler.CurrentPlayers[message.Sender.ID]
 
 	if isPlaying {
 		answer := handler.Local.Get(message.Sender.LanguageCode, "NewGameError")
@@ -39,19 +40,21 @@ func (handler *BotHandler) CmdNewGame(message *tb.Message) {
 
 	player := gs.NewPlayer(message.Sender)
 
-	handler.CurrentPlayers[message.Sender] = player
+	handler.CurrentPlayers[message.Sender.ID] = player
+
+	log.Print(message.Sender)
 }
 
 // CmdGetMyId sends user his id in telegram
 // it can be used to connect to some person's game.
 func (handler *BotHandler) CmdGetMyId(message *tb.Message) {
-	handler.Bot.Send(message.Sender, message.Sender.ID)
+	handler.Bot.Send(message.Sender, strconv.FormatInt(message.Sender.ID, 10))
 }
 
 // CmdExitLobby deletes player from lobby if the game have not started yet
 // and finishes the game if it has started.
 func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
-	player, isInGame := handler.CurrentPlayers[message.Sender]
+	player, isInGame := handler.CurrentPlayers[message.Sender.ID]
 
 	if !isInGame {
 		answer := handler.Local.Get(message.Sender.LanguageCode, "NotInLobby")
@@ -62,10 +65,10 @@ func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
 	player.State.NumberOfPlayers--
 
 	// Telling others that someone left the lobby.
-	for user, playerF := range handler.CurrentPlayers {
+	for _, playerF := range handler.CurrentPlayers {
 		if playerF.State == player.State && playerF != player {
-			answer := player.User.Username + handler.Local.Get(user.LanguageCode, "LeftTheLobby")
-			handler.Bot.Send(user, answer)
+			answer := player.User.Username + handler.Local.Get(playerF.User.LanguageCode, "LeftTheLobby")
+			handler.Bot.Send(playerF.User, answer)
 		}
 	}
 
@@ -79,13 +82,15 @@ func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
 		}
 	}
 
-	delete(handler.CurrentPlayers, player.User)
+	delete(handler.CurrentPlayers, player.User.ID)
 }
 
 // MessageHandler handles essages sent by the user
 // (for example during the game or while inviting people).
 func (handler *BotHandler) MessageHandler(message *tb.Message) {
-	_, isPlaying := handler.CurrentPlayers[message.Sender]
+	p, isPlaying := handler.CurrentPlayers[message.Sender.ID]
+
+	log.Print(p)
 
 	// If we are not in a game (we are not playing and we have not created one).
 	if !isPlaying {
@@ -100,9 +105,9 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 		// If we are here - it means that message sent by the user is the int
 		// and it can be some user id.
 		doesUserExist := false
-		for user, player := range handler.CurrentPlayers {
+		for _, player := range handler.CurrentPlayers {
 			// check if player do not play
-			if user.ID == id {
+			if player.User.ID == id {
 				if player.Role != gs.Lobby {
 					answer := handler.Local.Get(message.Sender.LanguageCode, "UserAlreadyInGame")
 					handler.Bot.Send(message.Sender, answer)
@@ -112,7 +117,7 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 				// We connect to this person.
 				newPlayer := gs.NewPlayer(message.Sender)
 				newPlayer.State = player.State
-				handler.CurrentPlayers[message.Sender] = newPlayer
+				handler.CurrentPlayers[message.Sender.ID] = newPlayer
 
 				doesUserExist = true
 
@@ -138,16 +143,16 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 		return
 	}
 
-	isInLobby := handler.CurrentPlayers[message.Sender].Role == gs.Lobby
+	isInLobby := handler.CurrentPlayers[message.Sender.ID].Role == gs.Lobby
 
 	switch isInLobby {
 	case true: // It means that we are waiting for others to join
 		answer := handler.Local.Get(message.Sender.LanguageCode, "WaitingForOthers") +
-			strconv.Itoa(handler.CurrentPlayers[message.Sender].State.NumberOfPlayers)
+			strconv.Itoa(handler.CurrentPlayers[message.Sender.ID].State.NumberOfPlayers)
 		handler.Bot.Send(message.Sender, answer)
 
 	case false: // It means that we are playing and try to do some action.
-		player := handler.CurrentPlayers[message.Sender]
+		player := handler.CurrentPlayers[message.Sender.ID]
 
 		player.State.PerformAction(player, &message.Text, handler.Bot, handler.Local, &handler.CurrentPlayers)
 	}
@@ -156,11 +161,11 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 // printStatistics sends all the information about the game
 // when the game is over.
 func printStatistics(handler *BotHandler, state *gs.GameState) {
-	for user, playerF := range handler.CurrentPlayers {
+	for _, playerF := range handler.CurrentPlayers {
 		if playerF.State == state {
 			// Printing stat of a match.
 			result := handler.Local.Get(playerF.User.LanguageCode, "GameOver")
-			handler.Bot.Send(user, result)
+			handler.Bot.Send(playerF.User, result)
 		}
 	}
 }

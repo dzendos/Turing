@@ -25,7 +25,7 @@ type GameState struct {
 // PlayerJoined changes the state of the current game
 // (increases the number of players in the game and
 // if all the players have already connected -> starts the game)
-func (gs *GameState) PlayerJoined(bot *tb.Bot, local *lcl.Localizer, currentPlayers *map[*tb.User]*Player) {
+func (gs *GameState) PlayerJoined(bot *tb.Bot, local *lcl.Localizer, currentPlayers *map[int64]*Player) {
 	gs.NumberOfPlayers++
 
 	if gs.NumberOfPlayers != 3 {
@@ -68,7 +68,7 @@ func (gs *GameState) PlayerJoined(bot *tb.Bot, local *lcl.Localizer, currentPlay
 // Perform action checks if player can do some action on the current
 // state of the game, and if yes - changes the state of the game.
 func (gs *GameState) PerformAction(player *Player, message *string, bot *tb.Bot, local *lcl.Localizer,
-	currentPlayers *map[*tb.User]*Player) {
+	currentPlayers *map[int64]*Player) {
 
 	if !player.CanPerformAction() {
 		answer := local.Get(player.User.LanguageCode, "NotYourTurn")
@@ -108,10 +108,10 @@ func (gs *GameState) PerformAction(player *Player, message *string, bot *tb.Bot,
 		bot.Send(knave.User, toKnave)
 		bot.Send(knight.User, toKnight)
 	} else {
-		for user, playerF := range *currentPlayers {
+		for _, playerF := range *currentPlayers {
 			if playerF.Role == Host {
 				playerMessage := playerF.NickName + ":\n" + *message
-				bot.Send(user, playerMessage)
+				bot.Send(playerF.User, playerMessage)
 
 				break
 			}
