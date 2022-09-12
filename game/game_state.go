@@ -48,6 +48,7 @@ func (gs *GameState) PlayerJoined(bot *tb.Bot, local *lcl.Localizer, currentPlay
 	players[2].Role = Knight
 
 	players[1].NickName = getRandomNickName()
+	time.Sleep(8 * time.Millisecond)
 	players[2].NickName = getRandomNickName()
 
 	// Sending messages
@@ -108,20 +109,15 @@ func (gs *GameState) PerformAction(player *Player, message *string, bot *tb.Bot,
 		bot.Send(knave.User, toKnave)
 		bot.Send(knight.User, toKnight)
 	} else {
-		for _, playerF := range *currentPlayers {
-			if playerF.Role == Host {
-				playerMessage := playerF.NickName + ":\n" + *message
-				bot.Send(playerF.User, playerMessage)
-
-				break
-			}
-		}
-
 		if player.Role == Knight {
 			player.State.HasKnightFinished = true
+			playerMessage := knight.NickName + ":\n" + *message
+			bot.Send(host.User, playerMessage)
 		}
 		if player.Role == Knave {
 			player.State.HasKnaveFinished = true
+			playerMessage := knave.NickName + ":\n" + *message
+			bot.Send(host.User, playerMessage)
 		}
 
 		if player.State.HasKnightFinished && player.State.HasKnaveFinished {

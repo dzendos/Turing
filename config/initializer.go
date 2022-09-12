@@ -14,9 +14,6 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-// ########################## MOVE TO CONFIG ##########################
-var TOKEN string = ""
-
 // InitializeBot tries to connect the bot with
 // our token.
 func InitializeBot() (*tb.Bot, error) {
@@ -41,12 +38,12 @@ func InitializeBot() (*tb.Bot, error) {
 // InitializeBotHandler connects bot with all handle
 // methods we have.
 func InitializeBotHandler(bot *tb.Bot) {
-	// TODO: add handlers
 	botHandler := cmd_handler.BotHandler{Bot: bot, Local: lcl.NewLocalizer(), CurrentPlayers: make(map[int64]*gs.Player)}
 
 	bot.Handle("/start", botHandler.CmdStart)
 	bot.Handle("/get_my_id", botHandler.CmdGetMyId)
 	bot.Handle("/new_game", botHandler.CmdNewGame)
 	bot.Handle("/exit_lobby", botHandler.CmdExitLobby)
+	bot.Handle("/answer", botHandler.CmdAnswer)
 	bot.Handle(tb.OnText, botHandler.MessageHandler)
 }

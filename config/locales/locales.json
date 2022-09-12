@@ -2,7 +2,7 @@
     "ru": 
     {
         "start": "Привет! Я Бот Тьюринга! Скоро н всех смартфонах страны!",
-        "NewGameError": "Невозможно присоединиться к игре, которая уже началась.",
+        "NewGameError": "Невозможно создать новую игру, у вас уже есть одна.",
         "NewGameCreation": "Вы создали игру! Игроки могут присоединиться к Вам по Player Id.\n Чтобы узнать его используйте команду /get_my_id.",
         "WaitingForOthers": "Ожидаем других игроков.\n Количестыо игроков в комнате: ",
         "IncorrectGameId": "Введенный Вами Id некорректен. Проверьте его написание и попробуйте подключиться еще раз.",
@@ -16,13 +16,19 @@
         "YourTurn": "Ваш ход!",
         "NotInLobby": "Вы не в комнате.",
         "LeftTheLobby": " покинул вашу комнату.",
-        "GameOver": "Конец игры\nСкоро здесь появится статистика матча."
+        "GameOver": "Конец игры\nСкоро здесь появится статистика матча.",
+        "JoiningYourOwnGame": "Вы пытаетесь подключиться к своей же игре.",
+        "AnswerError": "Вы сейчас не в игре - вы не можете сделать предположение.",
+        "NotAHostAnswer": "Вы не хост - вы не можете делать предположений.",
+        "WhoIsKnave": "Кто ",
+        "HostMakingDecision": "Хост делает решение",
+        "host": "Ведущий"
     },
 
     "en":
     {
         "start": "Hi, I am Turing Bot! Coming soon!",
-        "NewGameError": "Impossible to join the game, that has already started.",
+        "NewGameError": "Impossible to create the game, you already have one.",
         "NewGameCreation": "You have created a new game! Others can join you by typing your Player id.\n Type /get_my_id command to know it.",
         "WaitingForOthers": "Waiting for others players.\n Players in lobby: ",
         "IncorrectGameId": "The id you have entered is not correct. Check if it is correct and try once again.",
@@ -36,6 +42,12 @@
         "YourTurn": "Your turn!",
         "NotInLobby": "You are not in lobby!",
         "LeftTheLobby": " has left your lobby.",
-        "GameOver": "Game Over\nSoon here will be some statistics."
+        "GameOver": "Game Over\nSoon here will be some statistics.",
+        "JoiningYourOwnGame": "You are trying to join your own game.",
+        "AnswerError": "You are not in the game right now, you cannot make a guess.",
+        "NotAHostAnswer": "You are not a host, you cannot answer.",
+        "WhoIs": "Who is ",
+        "HostMakingDecision": "Host making a decision",
+        "host": "Host"
     }
 }

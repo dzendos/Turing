@@ -85,6 +85,46 @@ func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
 	delete(handler.CurrentPlayers, player.User.ID)
 }
 
+func (handler *BotHandler) CmdAnswer(message *tb.Message) {
+	player, isPlaying := handler.CurrentPlayers[message.Sender.ID]
+
+	if isPlaying {
+		answer := handler.Local.Get(message.Sender.LanguageCode, "AnswerError")
+		handler.Bot.Send(message.Sender, answer)
+		return
+	}
+
+	if player.Role != gs.Host {
+		answer := handler.Local.Get(message.Sender.LanguageCode, "NotAHostAnswer")
+		handler.Bot.Send(message.Sender, answer)
+		return
+	}
+
+	var host, knight, knave *gs.Player
+	var nick string // random nickname to display to the host
+
+	for _, playerF := range handler.CurrentPlayers {
+		if playerF.State == player.State && playerF.Role == gs.Host {
+			host = playerF
+		}
+		if playerF.State == player.State && playerF.Role == gs.Knight {
+			knight = playerF
+			nick = knight.NickName
+		}
+		if playerF.State == player.State && playerF.Role == gs.Knave {
+			knave = playerF
+			nick = knave.NickName
+		}
+	}
+
+	hostAnswer := handler.Local.Get(host.User.LanguageCode, "WhoIsKnave") + nick
+	knightAnswer := handler.Local.Get(knight.User.LanguageCode, "HostMakingDecision")
+	knaveAnswer := handler.Local.Get(knave.User.LanguageCode, "HostMakingDecision")
+	handler.Bot.Send(host.User, hostAnswer, handler.MakeAnswerKeyboard(host, knight, knave, nick))
+	handler.Bot.Send(knight.User, knightAnswer)
+	handler.Bot.Send(knave.User, knaveAnswer)
+}
+
 // MessageHandler handles essages sent by the user
 // (for example during the game or while inviting people).
 func (handler *BotHandler) MessageHandler(message *tb.Message) {
@@ -110,6 +150,12 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 			if player.User.ID == id {
 				if player.Role != gs.Lobby {
 					answer := handler.Local.Get(message.Sender.LanguageCode, "UserAlreadyInGame")
+					handler.Bot.Send(message.Sender, answer)
+					return
+				}
+
+				if player.User.ID == message.Sender.ID {
+					answer := handler.Local.Get(message.Sender.LanguageCode, "JoiningYourOwnGame")
 					handler.Bot.Send(message.Sender, answer)
 					return
 				}
@@ -168,4 +214,27 @@ func printStatistics(handler *BotHandler, state *gs.GameState) {
 			handler.Bot.Send(playerF.User, result)
 		}
 	}
+}
+
+func (handler *BotHandler) MakeAnswerKeyboard(host, knight, knave *gs.Player, nick string) *tb.ReplyMarkup {
+	menu := &tb.ReplyMarkup{ResizeReplyKeyboard: true}
+
+	// Reply buttons.
+	option1 := menu.Text(knight.User.FirstName + "(" + knight.User.Username + ")")
+	option2 := menu.Text(knave.User.FirstName + "(" + knave.User.Username + ")")
+
+	menu.Reply(
+		menu.Row(option1),
+		menu.Row(option2),
+	)
+
+	handler.Bot.Handle(&option1, func(message *tb.Message) {
+		if knight.NickName == nick {
+			// win
+		} else {
+
+		}
+	})
+
+	return menu
 }
