@@ -20,6 +20,9 @@ type GameState struct {
 	IsHostTurn        bool
 
 	NumberOfPlayers int
+
+	wasGameSuccesfull bool
+	wasGameFinished   bool
 }
 
 // PlayerJoined changes the state of the current game
@@ -140,6 +143,8 @@ func NewGameState() *GameState {
 		false,
 		false,
 		1,
+		false,
+		false,
 	}
 }
 
