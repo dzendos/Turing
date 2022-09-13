@@ -88,7 +88,7 @@ func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
 func (handler *BotHandler) CmdAnswer(message *tb.Message) {
 	player, isPlaying := handler.CurrentPlayers[message.Sender.ID]
 
-	if isPlaying {
+	if !isPlaying {
 		answer := handler.Local.Get(message.Sender.LanguageCode, "AnswerError")
 		handler.Bot.Send(message.Sender, answer)
 		return
@@ -101,7 +101,6 @@ func (handler *BotHandler) CmdAnswer(message *tb.Message) {
 	}
 
 	var host, knight, knave *gs.Player
-	var nick string // random nickname to display to the host
 
 	for _, playerF := range handler.CurrentPlayers {
 		if playerF.State == player.State && playerF.Role == gs.Host {
@@ -109,18 +108,16 @@ func (handler *BotHandler) CmdAnswer(message *tb.Message) {
 		}
 		if playerF.State == player.State && playerF.Role == gs.Knight {
 			knight = playerF
-			nick = knight.NickName
 		}
 		if playerF.State == player.State && playerF.Role == gs.Knave {
 			knave = playerF
-			nick = knave.NickName
 		}
 	}
 
-	hostAnswer := handler.Local.Get(host.User.LanguageCode, "WhoIsKnave") + nick
+	hostAnswer := handler.Local.Get(host.User.LanguageCode, "WhoIsKnave") + host.State.AnswerHandler.RightPlayer.NickName
 	knightAnswer := handler.Local.Get(knight.User.LanguageCode, "HostMakingDecision")
 	knaveAnswer := handler.Local.Get(knave.User.LanguageCode, "HostMakingDecision")
-	handler.Bot.Send(host.User, hostAnswer, handler.MakeAnswerKeyboard(host, knight, knave, nick))
+	handler.Bot.Send(host.User, hostAnswer, host.State.Selector)
 	handler.Bot.Send(knight.User, knightAnswer)
 	handler.Bot.Send(knave.User, knaveAnswer)
 }

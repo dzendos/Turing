@@ -11,6 +11,37 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
+type answerHandler struct {
+	Bot   *tb.Bot        // Bot contains reference on a main Bot to be able to send messages throygh it.
+	Local *lcl.Localizer // Local contains dictionary with messages on different languages.
+
+	RightPlayer *Player
+
+	host   *Player
+	knight *Player
+	knave  *Player
+}
+
+func (handler *answerHandler) pressHandle(c *tb.Callback) {
+	if c.Message.Text == handler.RightPlayer.NickName {
+		// Win case.
+		handler.Bot.Send(handler.host.User, "Tadam!")
+	} else {
+		handler.Bot.Send(handler.host.User, "Oops!")
+	}
+}
+
+func newAnswerHandler(bot *tb.Bot, local *lcl.Localizer, rightPlayer, host, knight, knave *Player) *answerHandler {
+	return &answerHandler{
+		bot,
+		local,
+		rightPlayer,
+		host,
+		knight,
+		knave,
+	}
+}
+
 // Type GameState contains all the information about
 // the current game.
 type GameState struct {
@@ -21,8 +52,16 @@ type GameState struct {
 
 	NumberOfPlayers int
 
-	wasGameSuccesfull bool
-	wasGameFinished   bool
+	WasGameSuccesfull bool
+	WasGameFinished   bool
+
+	BegginingDate time.Time
+
+	Selector *tb.ReplyMarkup
+	Btn1     tb.Btn
+	Btn2     tb.Btn
+
+	AnswerHandler *answerHandler
 }
 
 // PlayerJoined changes the state of the current game
@@ -67,6 +106,30 @@ func (gs *GameState) PlayerJoined(bot *tb.Bot, local *lcl.Localizer, currentPlay
 	bot.Send(players[2].User, KnightAnswer)
 
 	gs.IsHostTurn = true
+
+	// Creating buttons for a host.
+	randomPlayer := rand.Intn(1) + 1
+
+	player2 := 3 - randomPlayer
+
+	gs.Btn1 = gs.Selector.Data(players[1].User.Username, players[randomPlayer].User.Username)
+	gs.Btn2 = gs.Selector.Data(players[2].User.Username, players[player2].User.Username)
+
+	gs.AnswerHandler = newAnswerHandler(
+		bot,
+		local,
+		players[randomPlayer],
+		players[0],
+		players[1],
+		players[2],
+	)
+
+	gs.Selector.Inline(
+		gs.Selector.Row(gs.Btn1, gs.Btn2),
+	)
+
+	bot.Handle(&gs.Btn1, gs.AnswerHandler.pressHandle)
+	bot.Handle(&gs.Btn2, gs.AnswerHandler.pressHandle)
 }
 
 // Perform action checks if player can do some action on the current
@@ -145,6 +208,11 @@ func NewGameState() *GameState {
 		1,
 		false,
 		false,
+		time.Now(),
+		&tb.ReplyMarkup{},
+		tb.Btn{},
+		tb.Btn{},
+		nil,
 	}
 }
 
