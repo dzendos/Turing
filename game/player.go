@@ -4,6 +4,11 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
+type messageHistory struct {
+	message        string
+	timeFromTheBeg uint64
+}
+
 // Type PlayerRole is used to identify
 // the role of the player in the game.
 type PlayerRole int
@@ -24,6 +29,8 @@ type Player struct {
 	Role     PlayerRole
 	NickName string
 	State    *GameState
+
+	history []messageHistory
 }
 
 // CanPerformAction checks if the player with his role can
