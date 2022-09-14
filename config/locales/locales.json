@@ -22,6 +22,11 @@
         "NotAHostAnswer": "Вы не хост - вы не можете делать предположений.",
         "WhoIsKnave": "Кто ",
         "HostMakingDecision": "Хост делает решение",
+        "YouWin": "Поздравляем! Вы победили!",
+        "WouLoose": "Вы проиграли :(",
+        "NumberOfMessages": "Количество ваших сообщений: ",
+        "BegginingDate": "Дата начала игры: ",
+        "GameDuration": "Длительность игры: ",
         "host": "Ведущий"
     },
 
@@ -48,6 +53,11 @@
         "NotAHostAnswer": "You are not a host, you cannot answer.",
         "WhoIs": "Who is ",
         "HostMakingDecision": "Host making a decision",
+        "YouWin": "Congratulations! You win!",
+        "WouLoose": "You loose :(",
+        "NumberOfMessages": "Number of your messages: ",
+        "BegginingDate": "Beggining date: ",
+        "GameDuration": "Game duration: ",
         "host": "Host"
     }
 }

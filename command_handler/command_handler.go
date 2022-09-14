@@ -64,16 +64,39 @@ func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
 
 	player.State.NumberOfPlayers--
 
+	var host, knight, knave *gs.Player
+
 	// Telling others that someone left the lobby.
 	for _, playerF := range handler.CurrentPlayers {
-		if playerF.State == player.State && playerF != player {
-			answer := player.User.Username + handler.Local.Get(playerF.User.LanguageCode, "LeftTheLobby")
-			handler.Bot.Send(playerF.User, answer)
+		if playerF.State == player.State {
+			if playerF != player {
+				answer := player.User.Username + handler.Local.Get(playerF.User.LanguageCode, "LeftTheLobby")
+				handler.Bot.Send(playerF.User, answer)
+			}
+
+			if playerF.Role == gs.Host {
+				host = playerF
+			}
+			if playerF.Role == gs.Knight {
+				knight = playerF
+			}
+			if playerF.Role == gs.Knave {
+				knave = playerF
+			}
 		}
 	}
 
 	if player.Role != gs.Lobby {
-		printStatistics(handler, player.State)
+		host.State.WasGameFinished = true
+
+		gs.PrintStatistics(
+			handler.Bot,
+			handler.Local,
+			host,
+			knight,
+			knave,
+			host.State,
+		)
 
 		for user, playerF := range handler.CurrentPlayers {
 			if playerF.State == player.State && playerF != player {
@@ -85,6 +108,8 @@ func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
 	delete(handler.CurrentPlayers, player.User.ID)
 }
 
+// CmdAnswer calls a message with keyboard with 2 keys - names of the players
+// So the host can make a decision about the personality and finish the game.
 func (handler *BotHandler) CmdAnswer(message *tb.Message) {
 	player, isPlaying := handler.CurrentPlayers[message.Sender.ID]
 
@@ -199,39 +224,4 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 
 		player.State.PerformAction(player, &message.Text, handler.Bot, handler.Local, &handler.CurrentPlayers)
 	}
-}
-
-// printStatistics sends all the information about the game
-// when the game is over.
-func printStatistics(handler *BotHandler, state *gs.GameState) {
-	for _, playerF := range handler.CurrentPlayers {
-		if playerF.State == state {
-			// Printing stat of a match.
-			result := handler.Local.Get(playerF.User.LanguageCode, "GameOver")
-			handler.Bot.Send(playerF.User, result)
-		}
-	}
-}
-
-func (handler *BotHandler) MakeAnswerKeyboard(host, knight, knave *gs.Player, nick string) *tb.ReplyMarkup {
-	menu := &tb.ReplyMarkup{ResizeReplyKeyboard: true}
-
-	// Reply buttons.
-	option1 := menu.Text(knight.User.FirstName + "(" + knight.User.Username + ")")
-	option2 := menu.Text(knave.User.FirstName + "(" + knave.User.Username + ")")
-
-	menu.Reply(
-		menu.Row(option1),
-		menu.Row(option2),
-	)
-
-	handler.Bot.Handle(&option1, func(message *tb.Message) {
-		if knight.NickName == nick {
-			// win
-		} else {
-
-		}
-	})
-
-	return menu
 }

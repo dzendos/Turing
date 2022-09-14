@@ -4,7 +4,7 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-type messageHistory struct {
+type MessageHistory struct {
 	message        string
 	timeFromTheBeg uint64
 }
@@ -30,7 +30,7 @@ type Player struct {
 	NickName string
 	State    *GameState
 
-	history []messageHistory
+	History []MessageHistory
 }
 
 // CanPerformAction checks if the player with his role can

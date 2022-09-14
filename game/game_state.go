@@ -4,12 +4,47 @@ package game
 
 import (
 	"math/rand"
+	"strconv"
 	"time"
 
 	lcl "github.com/dzendos/Turing/config/locales"
 	"github.com/goombaio/namegenerator"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
+
+// printStatistics sends all the information about the game
+// when the game is over.
+func PrintStatistics(bot *tb.Bot, local *lcl.Localizer, host, knight, knave *Player, state *GameState) {
+	hostResult := local.Get(host.User.LanguageCode, "GameOver")
+	knightResult := local.Get(knight.User.LanguageCode, "GameOver")
+	knaveResult := local.Get(knave.User.LanguageCode, "GameOver")
+
+	bot.Send(host.User, hostResult)
+	bot.Send(knight.User, knightResult)
+	bot.Send(knave.User, knaveResult)
+
+	begDate := host.State.BegginingDate
+	gameDuration := time.Since(begDate)
+
+	hostNumberOfMessages := local.Get(host.User.LanguageCode, "NumberOfMessages") + strconv.FormatInt(int64(len(host.History)), 10)
+	hostBegginingDate := local.Get(host.User.LanguageCode, "BegginingDate") + begDate.Format(time.RFC822)
+	hostGameDuration := local.Get(host.User.LanguageCode, "GameDuration") + strconv.FormatInt(int64(gameDuration.Seconds()), 10)
+	hostAnswer := hostNumberOfMessages + "\n" + hostBegginingDate + "\n" + hostGameDuration
+
+	knightNumberOfMessages := local.Get(knight.User.LanguageCode, "NumberOfMessages") + strconv.FormatInt(int64(len(knight.History)), 10)
+	knightBegginingDate := local.Get(knight.User.LanguageCode, "BegginingDate") + begDate.Format(time.RFC822)
+	knightGameDuration := local.Get(knight.User.LanguageCode, "GameDuration") + strconv.FormatInt(int64(gameDuration.Seconds()), 10)
+	knightAnswer := knightNumberOfMessages + "\n" + knightBegginingDate + "\n" + knightGameDuration
+
+	knaveNumberOfMessages := local.Get(knave.User.LanguageCode, "NumberOfMessages") + strconv.FormatInt(int64(len(knave.History)), 10)
+	knaveBegginingDate := local.Get(knave.User.LanguageCode, "BegginingDate") + begDate.Format(time.RFC822)
+	knaveGameDuration := local.Get(knave.User.LanguageCode, "GameDuration") + strconv.FormatInt(int64(gameDuration.Seconds()), 10)
+	knaveAnswer := knaveNumberOfMessages + "\n" + knaveBegginingDate + "\n" + knaveGameDuration
+
+	bot.Send(host.User, hostAnswer)
+	bot.Send(knight.User, knightAnswer)
+	bot.Send(knave.User, knaveAnswer)
+}
 
 type answerHandler struct {
 	Bot   *tb.Bot        // Bot contains reference on a main Bot to be able to send messages throygh it.
@@ -18,17 +53,39 @@ type answerHandler struct {
 	RightPlayer *Player
 
 	host   *Player
-	knight *Player
 	knave  *Player
+	knight *Player
 }
 
 func (handler *answerHandler) pressHandle(c *tb.Callback) {
 	if c.Message.Text == handler.RightPlayer.NickName {
 		// Win case.
-		handler.Bot.Send(handler.host.User, "Tadam!")
+		hostAnswer := handler.Local.Get(handler.host.User.LanguageCode, "YouWin")
+		knightAnswer := handler.Local.Get(handler.knight.User.LanguageCode, "YouWin")
+		knaveAnswer := handler.Local.Get(handler.knave.User.LanguageCode, "YouLoose")
+		handler.Bot.Send(handler.host.User, hostAnswer)
+		handler.Bot.Send(handler.knight.User, knightAnswer)
+		handler.Bot.Send(handler.knave.User, knaveAnswer)
 	} else {
-		handler.Bot.Send(handler.host.User, "Oops!")
+		hostAnswer := handler.Local.Get(handler.host.User.LanguageCode, "YouLoose")
+		knightAnswer := handler.Local.Get(handler.knight.User.LanguageCode, "YouLoose")
+		knaveAnswer := handler.Local.Get(handler.knave.User.LanguageCode, "YouWin")
+		handler.Bot.Send(handler.host.User, hostAnswer)
+		handler.Bot.Send(handler.knight.User, knightAnswer)
+		handler.Bot.Send(handler.knave.User, knaveAnswer)
 	}
+
+	handler.host.State.WasGameFinished = true
+	handler.host.State.WasGameSuccesfull = true
+
+	PrintStatistics(
+		handler.Bot,
+		handler.Local,
+		handler.host,
+		handler.knight,
+		handler.knave,
+		handler.host.State,
+	)
 }
 
 func newAnswerHandler(bot *tb.Bot, local *lcl.Localizer, rightPlayer, host, knight, knave *Player) *answerHandler {
@@ -37,8 +94,8 @@ func newAnswerHandler(bot *tb.Bot, local *lcl.Localizer, rightPlayer, host, knig
 		local,
 		rightPlayer,
 		host,
-		knight,
 		knave,
+		knight,
 	}
 }
 
@@ -108,10 +165,10 @@ func (gs *GameState) PlayerJoined(bot *tb.Bot, local *lcl.Localizer, currentPlay
 	gs.IsHostTurn = true
 
 	// Creating buttons for a host.
-	randomPlayer := rand.Intn(1) + 1
+	randomPlayer := rand.Intn(2) + 1
 
 	player2 := 3 - randomPlayer
-
+	// TODO: review
 	gs.Btn1 = gs.Selector.Data(players[1].User.Username, players[randomPlayer].User.Username)
 	gs.Btn2 = gs.Selector.Data(players[2].User.Username, players[player2].User.Username)
 
@@ -194,6 +251,11 @@ func (gs *GameState) PerformAction(player *Player, message *string, bot *tb.Bot,
 			bot.Send(host.User, toHost)
 		}
 	}
+
+	player.History = append(player.History, MessageHistory{
+		*message,
+		uint64(time.Since(player.State.BegginingDate)),
+	})
 }
 
 // NewGameState creates new empty game state.
