@@ -5,8 +5,8 @@ import (
 )
 
 type MessageHistory struct {
-	message        string
-	timeFromTheBeg uint64
+	Message        string
+	TimeFromTheBeg uint64
 }
 
 // Type PlayerRole is used to identify
