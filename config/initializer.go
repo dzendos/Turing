@@ -10,6 +10,7 @@ import (
 
 	cmd_handler "github.com/dzendos/Turing/command_handler"
 	lcl "github.com/dzendos/Turing/config/locales"
+	db "github.com/dzendos/Turing/database"
 	gs "github.com/dzendos/Turing/game"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -17,6 +18,8 @@ import (
 // InitializeBot tries to connect the bot with
 // our token.
 func InitializeBot() (*tb.Bot, error) {
+	db.Init()
+
 	jsonDict, _ := os.ReadFile("config/config.json")
 
 	var configs map[string]map[string]string

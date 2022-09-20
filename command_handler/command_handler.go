@@ -147,7 +147,7 @@ func (handler *BotHandler) CmdAnswer(message *tb.Message) {
 	handler.Bot.Send(knave.User, knaveAnswer)
 }
 
-// MessageHandler handles essages sent by the user
+// MessageHandler handles messages sent by the user
 // (for example during the game or while inviting people).
 func (handler *BotHandler) MessageHandler(message *tb.Message) {
 	p, isPlaying := handler.CurrentPlayers[message.Sender.ID]

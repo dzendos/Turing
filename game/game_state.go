@@ -86,6 +86,8 @@ func (handler *answerHandler) pressHandle(c *tb.Callback) {
 		handler.knave,
 		handler.host.State,
 	)
+
+	UploadGame(handler.host, handler.knight, handler.knave)
 }
 
 func newAnswerHandler(bot *tb.Bot, local *lcl.Localizer, rightPlayer, host, knight, knave *Player) *answerHandler {
@@ -254,7 +256,7 @@ func (gs *GameState) PerformAction(player *Player, message *string, bot *tb.Bot,
 
 	player.History = append(player.History, MessageHistory{
 		*message,
-		uint64(time.Since(player.State.BegginingDate)),
+		uint64(time.Since(player.State.BegginingDate).Seconds()),
 	})
 }
 
