@@ -8,58 +8,66 @@ import (
 
 	lcl "github.com/dzendos/Turing/config/locales"
 	gs "github.com/dzendos/Turing/game"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 type BotHandler struct {
-	Bot            *tb.Bot              // Bot contains reference on a main Bot to be able to send messages throygh it.
-	Local          *lcl.Localizer       // Local contains dictionary with messages on different languages.
+	Bot            *tb.Bot              // Bot contains reference on a main Bot to be able to send c.Messages throygh it.
+	Local          *lcl.Localizer       // Local contains dictionary with c.Messages on different languages.
 	CurrentPlayers map[int64]*gs.Player // Current players contains all the players that are playing or looking for a game. Key is an id of the player.
 }
 
 // CmdStart implements action on '/start' command.// BotHandler provides an interface between bot and commands.
-func (handler *BotHandler) CmdStart(message *tb.Message) {
-	answer := handler.Local.Get(message.Sender.LanguageCode, "start")
-	handler.Bot.Send(message.Sender, answer)
+func (handler *BotHandler) CmdStart(c tb.Context) error {
+	answer := handler.Local.Get(c.Sender().LanguageCode, "start")
+	handler.Bot.Send(c.Sender(), answer)
+	return nil
 }
 
 // CmdNewGame creates a new instance of a game for a current player
 // (if he is not in a game) and puts this Player in currentPlayers
 // as Lobby waiter.
-func (handler *BotHandler) CmdNewGame(message *tb.Message) {
-	_, isPlaying := handler.CurrentPlayers[message.Sender.ID]
+func (handler *BotHandler) CmdNewGame(c tb.Context) error {
+	_, isPlaying := handler.CurrentPlayers[c.Sender().ID]
 
 	if isPlaying {
-		answer := handler.Local.Get(message.Sender.LanguageCode, "NewGameError")
-		handler.Bot.Send(message.Sender, answer)
-		return
+		answer := handler.Local.Get(c.Sender().LanguageCode, "NewGameError")
+		handler.Bot.Send(c.Sender(), answer)
+		return nil
 	}
 
-	answer := handler.Local.Get(message.Sender.LanguageCode, "NewGameCreation")
-	handler.Bot.Send(message.Sender, answer)
+	answer := handler.Local.Get(c.Sender().LanguageCode, "NewGameCreation")
+	handler.Bot.Send(c.Sender(), answer)
 
-	player := gs.NewPlayer(message.Sender)
+	player := gs.NewPlayer(c.Sender())
+	player.State.HostId = c.Sender().ID
 
-	handler.CurrentPlayers[message.Sender.ID] = player
+	handler.CurrentPlayers[c.Sender().ID] = player
 
-	log.Print(message.Sender)
+	if c.Message().Text == "/new_random_game" {
+		player.State.IsGameRandom = true
+	}
+
+	log.Print(c.Sender())
+	return nil
 }
 
 // CmdGetMyId sends user his id in telegram
 // it can be used to connect to some person's game.
-func (handler *BotHandler) CmdGetMyId(message *tb.Message) {
-	handler.Bot.Send(message.Sender, strconv.FormatInt(message.Sender.ID, 10))
+func (handler *BotHandler) CmdGetMyId(c tb.Context) error {
+	handler.Bot.Send(c.Sender(), strconv.FormatInt(c.Sender().ID, 10))
+	return nil
 }
 
 // CmdExitLobby deletes player from lobby if the game have not started yet
 // and finishes the game if it has started.
-func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
-	player, isInGame := handler.CurrentPlayers[message.Sender.ID]
+func (handler *BotHandler) CmdExitLobby(c tb.Context) error {
+	player, isInGame := handler.CurrentPlayers[c.Sender().ID]
 
 	if !isInGame {
-		answer := handler.Local.Get(message.Sender.LanguageCode, "NotInLobby")
-		handler.Bot.Send(message.Sender, answer)
-		return
+		answer := handler.Local.Get(c.Sender().LanguageCode, "NotInLobby")
+		handler.Bot.Send(c.Sender(), answer)
+		return nil
 	}
 
 	player.State.NumberOfPlayers--
@@ -70,7 +78,7 @@ func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
 	for _, playerF := range handler.CurrentPlayers {
 		if playerF.State == player.State {
 			if playerF != player {
-				answer := player.User.Username + handler.Local.Get(playerF.User.LanguageCode, "LeftTheLobby")
+				answer := player.User.FirstName + handler.Local.Get(playerF.User.LanguageCode, "LeftTheLobby")
 				handler.Bot.Send(playerF.User, answer)
 			}
 
@@ -106,23 +114,25 @@ func (handler *BotHandler) CmdExitLobby(message *tb.Message) {
 	}
 
 	delete(handler.CurrentPlayers, player.User.ID)
+
+	return nil
 }
 
-// CmdAnswer calls a message with keyboard with 2 keys - names of the players
+// CmdAnswer calls a c.Message with keyboard with 2 keys - names of the players
 // So the host can make a decision about the personality and finish the game.
-func (handler *BotHandler) CmdAnswer(message *tb.Message) {
-	player, isPlaying := handler.CurrentPlayers[message.Sender.ID]
+func (handler *BotHandler) CmdAnswer(c tb.Context) error {
+	player, isPlaying := handler.CurrentPlayers[c.Sender().ID]
 
 	if !isPlaying {
-		answer := handler.Local.Get(message.Sender.LanguageCode, "AnswerError")
-		handler.Bot.Send(message.Sender, answer)
-		return
+		answer := handler.Local.Get(c.Sender().LanguageCode, "AnswerError")
+		handler.Bot.Send(c.Sender(), answer)
+		return nil
 	}
 
 	if player.Role != gs.Host {
-		answer := handler.Local.Get(message.Sender.LanguageCode, "NotAHostAnswer")
-		handler.Bot.Send(message.Sender, answer)
-		return
+		answer := handler.Local.Get(c.Sender().LanguageCode, "NotAHostAnswer")
+		handler.Bot.Send(c.Sender(), answer)
+		return nil
 	}
 
 	var host, knight, knave *gs.Player
@@ -145,54 +155,60 @@ func (handler *BotHandler) CmdAnswer(message *tb.Message) {
 	handler.Bot.Send(host.User, hostAnswer, host.State.Selector)
 	handler.Bot.Send(knight.User, knightAnswer)
 	handler.Bot.Send(knave.User, knaveAnswer)
+
+	delete(handler.CurrentPlayers, host.User.ID)
+	delete(handler.CurrentPlayers, knight.User.ID)
+	delete(handler.CurrentPlayers, knave.User.ID)
+
+	return nil
 }
 
-// MessageHandler handles messages sent by the user
+// c.MessageHandler handles c.Messages sent by the user
 // (for example during the game or while inviting people).
-func (handler *BotHandler) MessageHandler(message *tb.Message) {
-	p, isPlaying := handler.CurrentPlayers[message.Sender.ID]
+func (handler *BotHandler) MessageHandler(c tb.Context) error {
+	p, isPlaying := handler.CurrentPlayers[c.Sender().ID]
 
 	log.Print(p)
 
 	// If we are not in a game (we are not playing and we have not created one).
 	if !isPlaying {
-		// If user wrote some message in this case - it means he tries to connect to some person by his id.
-		id, err := strconv.ParseInt(message.Text, 10, 64)
+		// If user wrote some c.Message in this case - it means he tries to connect to some person by his id.
+		id, err := strconv.ParseInt(c.Message().Text, 10, 64)
 		if err != nil {
-			answer := handler.Local.Get(message.Sender.LanguageCode, "IncorrectGameId")
-			handler.Bot.Send(message.Sender, answer)
-			return
+			answer := handler.Local.Get(c.Sender().LanguageCode, "IncorrectGameId")
+			handler.Bot.Send(c.Sender(), answer)
+			return nil
 		}
 
-		// If we are here - it means that message sent by the user is the int
+		// If we are here - it means that c.Message sent by the user is the int
 		// and it can be some user id.
 		doesUserExist := false
 		for _, player := range handler.CurrentPlayers {
 			// check if player do not play
 			if player.User.ID == id {
 				if player.Role != gs.Lobby {
-					answer := handler.Local.Get(message.Sender.LanguageCode, "UserAlreadyInGame")
-					handler.Bot.Send(message.Sender, answer)
-					return
+					answer := handler.Local.Get(c.Sender().LanguageCode, "UserAlreadyInGame")
+					handler.Bot.Send(c.Sender(), answer)
+					return nil
 				}
 
-				if player.User.ID == message.Sender.ID {
-					answer := handler.Local.Get(message.Sender.LanguageCode, "JoiningYourOwnGame")
-					handler.Bot.Send(message.Sender, answer)
-					return
+				if player.User.ID == c.Sender().ID {
+					answer := handler.Local.Get(c.Sender().LanguageCode, "JoiningYourOwnGame")
+					handler.Bot.Send(c.Sender(), answer)
+					return nil
 				}
 
 				// We connect to this person.
-				newPlayer := gs.NewPlayer(message.Sender)
+				newPlayer := gs.NewPlayer(c.Sender())
 				newPlayer.State = player.State
-				handler.CurrentPlayers[message.Sender.ID] = newPlayer
+				handler.CurrentPlayers[c.Sender().ID] = newPlayer
 
 				doesUserExist = true
 
-				// Sending messages to users about what happened
-				joinedPlayerAnswer := handler.Local.Get(message.Sender.LanguageCode, "YouJoined") + player.User.Username
-				hostKnavenswer := message.Sender.Username + handler.Local.Get(message.Sender.LanguageCode, "SomePlayerJoinedYou")
-				handler.Bot.Send(message.Sender, joinedPlayerAnswer)
+				// Sending c.Messages to users about what happened
+				joinedPlayerAnswer := handler.Local.Get(c.Sender().LanguageCode, "YouJoined") + player.User.FirstName
+				hostKnavenswer := c.Sender().FirstName + handler.Local.Get(c.Sender().LanguageCode, "SomePlayerJoinedYou")
+				handler.Bot.Send(c.Sender(), joinedPlayerAnswer)
 				handler.Bot.Send(player.User, hostKnavenswer)
 
 				// Changing game state
@@ -203,25 +219,27 @@ func (handler *BotHandler) MessageHandler(message *tb.Message) {
 		}
 
 		if !doesUserExist {
-			answer := handler.Local.Get(message.Sender.LanguageCode, "UserDoesNotExist")
-			handler.Bot.Send(message.Sender, answer)
-			return
+			answer := handler.Local.Get(c.Sender().LanguageCode, "UserDoesNotExist")
+			handler.Bot.Send(c.Sender(), answer)
+			return nil
 		}
 
-		return
+		return nil
 	}
 
-	isInLobby := handler.CurrentPlayers[message.Sender.ID].Role == gs.Lobby
+	isInLobby := handler.CurrentPlayers[c.Sender().ID].Role == gs.Lobby
 
 	switch isInLobby {
 	case true: // It means that we are waiting for others to join
-		answer := handler.Local.Get(message.Sender.LanguageCode, "WaitingForOthers") +
-			strconv.Itoa(handler.CurrentPlayers[message.Sender.ID].State.NumberOfPlayers)
-		handler.Bot.Send(message.Sender, answer)
+		answer := handler.Local.Get(c.Sender().LanguageCode, "WaitingForOthers") +
+			strconv.Itoa(handler.CurrentPlayers[c.Sender().ID].State.NumberOfPlayers)
+		handler.Bot.Send(c.Sender(), answer)
 
 	case false: // It means that we are playing and try to do some action.
-		player := handler.CurrentPlayers[message.Sender.ID]
+		player := handler.CurrentPlayers[c.Sender().ID]
 
-		player.State.PerformAction(player, &message.Text, handler.Bot, handler.Local, &handler.CurrentPlayers)
+		player.State.PerformAction(player, &c.Message().Text, handler.Bot, handler.Local, &handler.CurrentPlayers)
 	}
+
+	return nil
 }

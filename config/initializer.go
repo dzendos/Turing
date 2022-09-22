@@ -12,7 +12,7 @@ import (
 	lcl "github.com/dzendos/Turing/config/locales"
 	db "github.com/dzendos/Turing/database"
 	gs "github.com/dzendos/Turing/game"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 // InitializeBot tries to connect the bot with
@@ -48,5 +48,6 @@ func InitializeBotHandler(bot *tb.Bot) {
 	bot.Handle("/new_game", botHandler.CmdNewGame)
 	bot.Handle("/exit_lobby", botHandler.CmdExitLobby)
 	bot.Handle("/answer", botHandler.CmdAnswer)
+	bot.Handle("/new_random_game", botHandler.CmdNewGame)
 	bot.Handle(tb.OnText, botHandler.MessageHandler)
 }
