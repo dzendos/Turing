@@ -3,13 +3,14 @@
 package game
 
 import (
+	"log"
 	"math/rand"
 	"strconv"
 	"time"
 
 	lcl "github.com/dzendos/Turing/config/locales"
 	"github.com/goombaio/namegenerator"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 // printStatistics sends all the information about the game
@@ -57,20 +58,22 @@ type answerHandler struct {
 	knight *Player
 }
 
-func (handler *answerHandler) pressHandle(c *tb.Callback) {
-	if c.Message.Text == handler.RightPlayer.NickName {
+func (handler *answerHandler) pressHandle(c tb.Context) error {
+	name := c.Callback().Unique
+
+	if name == handler.RightPlayer.User.FirstName {
 		// Win case.
 		hostAnswer := handler.Local.Get(handler.host.User.LanguageCode, "YouWin")
 		knightAnswer := handler.Local.Get(handler.knight.User.LanguageCode, "YouWin")
 		knaveAnswer := handler.Local.Get(handler.knave.User.LanguageCode, "YouLoose")
-		handler.Bot.Send(handler.host.User, hostAnswer)
+		handler.Bot.Edit(c.Message(), hostAnswer)
 		handler.Bot.Send(handler.knight.User, knightAnswer)
 		handler.Bot.Send(handler.knave.User, knaveAnswer)
 	} else {
 		hostAnswer := handler.Local.Get(handler.host.User.LanguageCode, "YouLoose")
 		knightAnswer := handler.Local.Get(handler.knight.User.LanguageCode, "YouLoose")
 		knaveAnswer := handler.Local.Get(handler.knave.User.LanguageCode, "YouWin")
-		handler.Bot.Send(handler.host.User, hostAnswer)
+		handler.Bot.Edit(c.Message(), hostAnswer)
 		handler.Bot.Send(handler.knight.User, knightAnswer)
 		handler.Bot.Send(handler.knave.User, knaveAnswer)
 	}
@@ -88,9 +91,11 @@ func (handler *answerHandler) pressHandle(c *tb.Callback) {
 	)
 
 	UploadGame(handler.host, handler.knight, handler.knave)
+
+	return nil
 }
 
-func newAnswerHandler(bot *tb.Bot, local *lcl.Localizer, rightPlayer, host, knight, knave *Player) *answerHandler {
+func newAnswerHandler(bot *tb.Bot, local *lcl.Localizer, rightPlayer, host, knave, knight *Player) *answerHandler {
 	return &answerHandler{
 		bot,
 		local,
@@ -108,11 +113,14 @@ type GameState struct {
 	HasKnaveFinished  bool
 	HasKnightFinished bool
 	IsHostTurn        bool
+	IsGameRandom      bool
 
 	NumberOfPlayers int
 
 	WasGameSuccesfull bool
 	WasGameFinished   bool
+
+	HostId int64
 
 	BegginingDate time.Time
 
@@ -123,17 +131,7 @@ type GameState struct {
 	AnswerHandler *answerHandler
 }
 
-// PlayerJoined changes the state of the current game
-// (increases the number of players in the game and
-// if all the players have already connected -> starts the game)
-func (gs *GameState) PlayerJoined(bot *tb.Bot, local *lcl.Localizer, currentPlayers *map[int64]*Player) {
-	gs.NumberOfPlayers++
-
-	if gs.NumberOfPlayers != 3 {
-		return
-	}
-
-	// Then we need to change state of people to DistributingRoles state.
+func (gs *GameState) randomDistribution(bot *tb.Bot, local *lcl.Localizer, currentPlayers *map[int64]*Player) (*Player, *Player, *Player) {
 	var players []*Player
 
 	for _, player := range *currentPlayers {
@@ -148,39 +146,90 @@ func (gs *GameState) PlayerJoined(bot *tb.Bot, local *lcl.Localizer, currentPlay
 	players[1].Role = Knave
 	players[2].Role = Knight
 
-	players[1].NickName = getRandomNickName()
+	return players[0], players[1], players[2]
+}
+
+func (gs *GameState) creatorIsAHost(bot *tb.Bot, local *lcl.Localizer, currentPlayers *map[int64]*Player) (*Player, *Player, *Player) {
+	var host *Player
+
+	for _, player := range *currentPlayers {
+		if player.State == gs && player.User.ID == gs.HostId {
+			host = player
+			break
+		}
+	}
+
+	var players []*Player
+
+	for _, player := range *currentPlayers {
+		if player.State == gs && player != host {
+			players = append(players, player)
+		}
+	}
+
+	host.Role = Host
+	players[0].Role = Knave
+	players[1].Role = Knight
+
+	return host, players[0], players[1]
+}
+
+// PlayerJoined changes the state of the current game
+// (increases the number of players in the game and
+// if all the players have already connected -> starts the game)
+func (gs *GameState) PlayerJoined(bot *tb.Bot, local *lcl.Localizer, currentPlayers *map[int64]*Player) {
+	gs.NumberOfPlayers++
+
+	if gs.NumberOfPlayers != 3 {
+		return
+	}
+
+	// Then we need to change state of people to DistributingRoles state.
+	var host, knight, knave *Player
+	if gs.IsGameRandom {
+		host, knave, knight = gs.randomDistribution(bot, local, currentPlayers)
+	} else {
+		host, knave, knight = gs.creatorIsAHost(bot, local, currentPlayers)
+	}
+
+	knave.NickName = getRandomNickName()
 	time.Sleep(8 * time.Millisecond)
-	players[2].NickName = getRandomNickName()
+	knight.NickName = getRandomNickName()
 
 	// Sending messages
-	hostAnswer := local.Get(players[0].User.LanguageCode, "HostGreetingMessage") + "\n" +
-		players[1].User.Username + "\n" +
-		players[2].User.Username
+	hostAnswer := local.Get(host.User.LanguageCode, "HostGreetingMessage") + "\n" +
+		knave.User.FirstName + "\n" +
+		knight.User.FirstName
 
-	KnaveAnswer := local.Get(players[1].User.LanguageCode, "KnaveGreetingMessage") + players[2].User.Username
-	KnightAnswer := local.Get(players[2].User.LanguageCode, "KnightGreetingMessage") + players[1].User.Username
+	KnaveAnswer := local.Get(knave.User.LanguageCode, "KnaveGreetingMessage") + knight.User.FirstName
+	KnightAnswer := local.Get(knight.User.LanguageCode, "KnightGreetingMessage") + knave.User.FirstName
 
-	bot.Send(players[0].User, hostAnswer)
-	bot.Send(players[1].User, KnaveAnswer)
-	bot.Send(players[2].User, KnightAnswer)
+	bot.Send(host.User, hostAnswer)
+	bot.Send(knave.User, KnaveAnswer)
+	bot.Send(knight.User, KnightAnswer)
 
 	gs.IsHostTurn = true
 
 	// Creating buttons for a host.
-	randomPlayer := rand.Intn(2) + 1
+	rand.Seed(time.Now().UnixNano())
+	randomPlayer := rand.Intn(2)
+	log.Print(randomPlayer)
 
-	player2 := 3 - randomPlayer
+	var players [2]*Player
+	players[0] = knight
+	players[1] = knave
+
 	// TODO: review
-	gs.Btn1 = gs.Selector.Data(players[1].User.Username, players[randomPlayer].User.Username)
-	gs.Btn2 = gs.Selector.Data(players[2].User.Username, players[player2].User.Username)
+	gs.Btn1 = gs.Selector.Data(knave.User.FirstName, knave.User.FirstName)
+	gs.Btn2 = gs.Selector.Data(knight.User.FirstName, knight.User.FirstName)
 
 	gs.AnswerHandler = newAnswerHandler(
 		bot,
 		local,
 		players[randomPlayer],
-		players[0],
-		players[1],
-		players[2],
+		host,
+		knave,
+		knight,
 	)
 
 	gs.Selector.Inline(
@@ -269,9 +318,11 @@ func NewGameState() *GameState {
 		false,
 		false,
 		false,
+		false,
 		1,
 		false,
 		false,
+		0,
 		time.Now(),
 		&tb.ReplyMarkup{},
 		tb.Btn{},
@@ -282,6 +333,7 @@ func NewGameState() *GameState {
 
 // shufflePlayers is used to give random roles for players.
 func shufflePlayers(players []*Player) {
+	rand.Seed(time.Now().UnixNano())
 	for i := range players {
 		j := rand.Intn(i + 1)
 		players[i], players[j] = players[j], players[i]
